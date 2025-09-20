@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KBridge KBRIDGE / LCL 창고료 계산기</title>
+<style>
+  :root{
+    --bg:#f8fafc;           /* light only */
+    --card:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --primary:#2563eb;      /* KB 기본 파랑톤 제안 */
+    --accent:#0ea5e9;
+    --border:#e2e8f0;
+    --good:#16a34a; --warn:#f59e0b; --bad:#ef4444;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Pretendard,Noto Sans KR,Apple SD Gothic Neo,Malgun Gothic,sans-serif;font-size:15px;line-height:1.5}
+  .wrap{max-width:900px;margin:14px auto;padding:0 10px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+  header h1{font-size:20px;margin:0;font-weight:800;letter-spacing:-0.2px}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#fff;background:var(--primary);padding:4px 10px;border-radius:999px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 16px 12px 16px;box-shadow:0 4px 12px rgba(15,23,42,.06)}
+  .grid{display:grid;gap:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .row > *{flex:1}
+  .layout{display:grid;grid-template-columns:1fr;gap:12px}
+  @media (max-width:1100px){.layout{grid-template-columns:1fr}}
+  .pane-title{font-weight:900;font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:.2px}
+
+  label.lbl{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  /* 선택 필수 정보 가시성 강화 */
+  .lbl.big{font-size:14px;color:var(--text);font-weight:900}
+  .key .seg button{font-size:15px;min-height:46px;padding:12px 14px}
+  .key input[type="number"], .key input[type="text"], .key select{font-size:15px;padding:10px 12px}
+  .key .ico{width:20px;height:20px}
+
+  .seg{display:flex;flex-wrap:wrap;gap:2px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff}
+  .seg button{flex:1 1 auto;display:flex;align-items:center;justify-content:center;gap:8px;border:0;background:#fff;padding:12px 14px;font-weight:800;font-size:14.5px;color:var(--muted);cursor:pointer;min-height:46px;letter-spacing:-0.2px}
+  .seg button.active{background:var(--primary);color:#fff}
+
+  input[type="number"],input[type="text"],select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:14px}
+  .hint{font-size:12px;color:var(--muted)}
+  .ico{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:6px;background:#eef2ff;border:1px solid #c7d2fe;font-size:12px;line-height:1}
+  .btn .ico{margin-right:6px}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--primary);background:var(--primary);color:#fff;padding:12px 16px;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(37,99,235,.2)}
+  .btn.secondary{background:#fff;color:var(--primary)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .totals{display:flex;gap:10px;flex-wrap:wrap}
+  .pill{background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;padding:8px 10px;border-radius:999px;font-size:12.5px}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  /* 결과 가시성 향상 */
+  #resultSec h3{font-size:18px}
+  #resultSec table{font-size:14.5px}
+  #resultSec thead th{font-size:13.5px}
+  #resultSec tbody td{padding:12px 10px}
+  #resultSec tbody td:first-child{font-weight:600}
+  #resultSec tbody td:last-child{font-variant-numeric:tabular-nums;letter-spacing:0.2px}
+  #resultSec tfoot td{font-size:20px;background:#eaf3ff}
+  #resultSec tfoot td:last-child{font-variant-numeric:tabular-nums;letter-spacing:0.3px}
+  th,td{padding:10px;border-bottom:1px dashed var(--border);text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  tfoot td{font-weight:800}
+  .port-wrap{display:grid;gap:12px}
+  @media(min-width:900px){.port-wrap.two{grid-template-columns:1fr 1fr}}
+  .subtle{font-size:12px;color:var(--muted)}
+  .mini{font-size:11px}
+  .footer{margin-top:16px;color:var(--muted);font-size:12px}
+  .portbar{display:flex;align-items:center;gap:10px}
+  .chip{display:inline-flex;align-items:center;gap:8px;padding:12px 14px;border-radius:999px;border:1px solid var(--border);background:#fff;color:#fff;font-weight:800;cursor:pointer;min-height:44px; background: var(--primary)}
+  .chip.active{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 4px 12px rgba(37,99,235,.25)}
+  .viewmode{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .dim-row{border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff;margin-bottom:10px}
+  .dim-grid{display:grid;gap:8px;grid-template-columns:repeat(5,minmax(0,1fr))}
+  @media (max-width:800px){.dim-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  .sublbl{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+  .dim-actions{display:flex;justify-content:flex-end;margin-top:6px}
+@media (max-width:480px){
+  .wrap{padding:0 12px}
+  input[type="text"],input[type="number"],select{font-size:16px}
+  .seg button,.btn,.chip{min-height:48px}
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>LCL 창고료 계산기 - KBRIDGE제작</h1>
+    </header>
+
+    <div class="layout">
+      <!-- 좌측: 입력/요약 -->
+      <aside class="left">
+        <div class="card" style="margin-bottom:12px">
+          <div class="pane-title">도착항</div>
+          <div class="portbar" role="tablist" aria-label="도착항 선택">
+            <div class="seg" id="segPorts">
+              <button id="portICN" data-port="ICN" type="button"><span class="ico">⚓</span><span>인천항</span></button>
+              <button id="portPUS" data-port="PUS" type="button"><span class="ico">⚓</span><span>부산항</span></button>
+            </div>
+            <button id="portALL" class="chip active" data-port="ALL" type="button"><span class="ico">🧩</span><span>전체 비교</span></button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <div class="pane-title">보관 정보</div>
+          <div class="grid cols-2">
+            <div>
+              <label class="lbl">창고 보관 일수</label>
+              <input id="days" type="number" min="0" step="1" placeholder="예: 3" />
+              <div class="hint">반입일 포함 · 7일 초과 시 장기보관 할증 규칙</div>
+            </div>
+            <div>
+              <label class="lbl">CIF VALUE (KRW)</label>
+              <input id="cif" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="예: 5,000,000" />
+              <div class="hint">CIF = 물품가격 + 국제운송료 + 적하보험료</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <div class="pane-title">화물 정보</div>
+          <div class="key">
+            <div class="seg" style="margin-bottom:10px">
+              <button id="modeCBM" class="active" data-mode="cbm" type="button"><span class="ico">📦</span><span>CBM 직접 입력</span></button>
+              <button id="modeDIMS" data-mode="dims" type="button"><span class="ico">📏</span><span>화물 사이즈 입력</span></button>
+            </div>
+            <div id="cbmBox">
+              <div class="row">
+                <div>
+                  <label class="lbl">총 CBM (m³)</label>
+                  <input id="cbm" type="number" min="0" step="0.001" placeholder="예: 1.6" />
+                </div>
+                <div>
+                  <label class="lbl">총 중량 (kg)</label>
+                  <input id="weight" type="number" min="0" step="0.1" placeholder="예: 120" />
+                </div>
+                <div>
+                  <label class="lbl">총 PCS</label>
+                  <input id="pcs" type="number" min="0" step="1" placeholder="예: 4" />
+                </div>
+              </div>
+            </div>
+            <div id="dimsBox" style="display:none">
+              <div id="dimRows"></div>
+              <button class="btn secondary mini" id="addRow" type="button">+ 사이즈 추가</button>
+              <div class="hint" style="margin-top:6px">단위: cm (길이×너비×높이), 중량 kg. 각 행의 <b>PCS</b>만큼 합산됩니다.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <div class="pane-title">요약</div>
+          <div class="totals" id="totals"></div>
+          <div class="row" style="margin-top:10px">
+            <button id="calc" class="btn" type="button"><span class="ico">🧮</span>계산하기</button>
+            <button id="reset" class="btn secondary" type="button"><span class="ico">♻</span>초기화</button>
+          </div>
+        </div>
+
+        <div class="subtle">© 2025 KBridge · 외부 서비스 UI를 복제하지 않고 기능만 참고하여 제작</div>
+      </aside>
+
+      <!-- 우측: 결과 -->
+      <main class="right">
+        <section id="resultSec" class="card" style="display:none">
+          <div class="viewmode"><span class="badge" id="viewModeLabel">보기: 전체 비교</span></div>
+          <div class="subtle" style="margin-bottom:8px">결과는 참고용이며 실제 청구는 창고사/포워더 요율 및 정책에 따릅니다.</div>
+          <div id="portResults" class="port-wrap"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+<script>
+// ======================== 전역 상태 & 핸들러 ========================
+var selectedPort = 'ALL';
+var mode = 'cbm';
+var lastInputs = null; // 최근 계산 입력값 캐시
+
+// 공용 포맷터 & throttle
+const NF = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 });
+const NF_DEC = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 3 });
+function throttle(func, wait){
+  let timeout=null, last=0, trailingArgs=null;
+  return function(){
+    const now=Date.now();
+    const remaining = wait - (now - last);
+    const ctx=this, args=arguments;
+    if(remaining <= 0){ last=now; func.apply(ctx,args); }
+    else{
+      trailingArgs=args;
+      if(!timeout){ timeout=setTimeout(function(){ timeout=null; last=Date.now(); func.apply(ctx,trailingArgs); trailingArgs=null; }, remaining); }
+    }
+  }
+}
+
+function setActiveInGroup(btn){
+  var group = btn && btn.closest ? btn.closest('.seg') : null;
+  if(group){ group.querySelectorAll('button').forEach(function(b){ b.classList.remove('active'); }); }
+  if(btn){ btn.classList.add('active'); }
+}
+function handlePort(btn){
+  try{
+    document.querySelectorAll('button[data-port]').forEach(function(b){ b.classList.remove('active'); });
+    if(btn){ btn.classList.add('active'); }
+    selectedPort = btn ? btn.getAttribute('data-port') : selectedPort;
+    // 포트 변경 시 상단 요약(적용 과금 CBM) 즉시 갱신
+    if(typeof updateTotalsView==='function'){
+      var t = lastInputs ? lastInputs.totals : {pcs:0,cbm:0,kg:0,rt:0,chargeable:0};
+      updateTotalsView(t);
+    }
+    if(typeof renderResults==='function'){ renderResults(); }
+  }catch(e){ /* no-op */ }
+}
+function ensureDimsUI(){
+  var dimsBox=document.getElementById('dimsBox');
+  if(!dimsBox) return;
+  var dimRows=document.getElementById('dimRows');
+  if(!dimRows){
+    dimsBox.innerHTML = '<div id="dimRows"></div><button class="btn secondary mini" id="addRow" type="button">+ 사이즈 추가</button><div class="hint" style="margin-top:6px">단위: cm (길이×너비×높이), 중량 kg. 각 행의 <b>PCS</b>만큼 합산됩니다.</div>';
+    dimRows = document.getElementById('dimRows');
+  }
+  if(dimRows.children.length===0){ addDimRow(); }
+  var addBtn=document.getElementById('addRow');
+  if(addBtn && !addBtn.__kb_bound){ addBtn.addEventListener('click', function(){ addDimRow(); }); addBtn.__kb_bound=true; }
+}
+function handleMode(btn){
+  setActiveInGroup(btn);
+  mode = btn.getAttribute('data-mode');
+  var cbmBox=document.getElementById('cbmBox');
+  var dimsBox=document.getElementById('dimsBox');
+  if(cbmBox && dimsBox){
+    cbmBox.style.display=(mode==='cbm')?'block':'none';
+    dimsBox.style.display=(mode==='dims')?'block':'none';
+  }
+  if(mode==='dims'){ ensureDimsUI(); }
+}
+
+// 버튼 바인딩(직접)
+document.addEventListener('DOMContentLoaded', function(){
+  // 포트/모드 탭
+  var elAll=document.getElementById('portALL'); if(elAll) elAll.addEventListener('click', function(){ handlePort(this); });
+  var elICN=document.getElementById('portICN'); if(elICN) elICN.addEventListener('click', function(){ handlePort(this); });
+  var elPUS=document.getElementById('portPUS'); if(elPUS) elPUS.addEventListener('click', function(){ handlePort(this); });
+  var elMC=document.getElementById('modeCBM'); if(elMC) elMC.addEventListener('click', function(){ handleMode(this); });
+  var elMD=document.getElementById('modeDIMS'); if(elMD) elMD.addEventListener('click', function(){ handleMode(this); });
+  // 계산/초기화 버튼
+  var elCalc=document.getElementById('calc'); if(elCalc) elCalc.addEventListener('click', onCalcClick);
+  var elReset=document.getElementById('reset'); if(elReset) elReset.addEventListener('click', onResetClick);
+  // 초기 UI 준비
+  ensureDimsUI();
+  bindCifFormatter();
+  bindLiveTotals();
+  updateTotalsView({pcs:0,cbm:0,kg:0,rt:0,chargeable:0});
+});
+
+// ======================== 유틸 & 입력 합산 ========================
+function fmtKRW(n){ if(!isFinite(n)) return '-'; return NF.format(Math.round(n))+'원'; }
+function pill(label, value){ const span=document.createElement('span'); span.className='pill'; span.textContent=`${label}: ${value}`; return span; }
+
+function addDimRow(data){
+  data = Object.assign({L:'',W:'',H:'',KG:'',PCS:1}, data||{});
+  const dimRows = document.getElementById('dimRows');
+  const row = document.createElement('div');
+  row.className='dim-row';
+  row.innerHTML = `
+    <div class="dim-grid">
+      <div class="field"><label class="sublbl">길이 (cm)</label><input type="number" step="0.1" min="0" placeholder="예: 100" value="\${data.L}"></div>
+      <div class="field"><label class="sublbl">너비 (cm)</label><input type="number" step="0.1" min="0" placeholder="예: 50" value="\${data.W}"></div>
+      <div class="field"><label class="sublbl">높이 (cm)</label><input type="number" step="0.1" min="0" placeholder="예: 40" value="\${data.H}"></div>
+      <div class="field"><label class="sublbl">중량 (kg/PCS)</label><input type="number" step="0.1" min="0" placeholder="예: 20" value="\${data.KG}"></div>
+      <div class="field"><label class="sublbl">PCS</label><input type="number" step="1" min="1" placeholder="예: 2" value="\${data.PCS}"></div>
+    </div>
+    <div class="dim-actions"><button class="btn secondary mini" type="button">삭제</button></div>`;
+  row.querySelector('.dim-actions button').addEventListener('click', function(){ row.remove(); });
+  dimRows.appendChild(row);
+}
+
+
+
+function updateTotalsView(t){
+  const box=document.getElementById('totals');
+  if(!box) return;
+  box.innerHTML='';
+  box.appendChild(pill('총 PCS', t.pcs));
+  box.appendChild(pill('총 CBM', t.cbm.toFixed(3)));
+  box.appendChild(pill('총 중량', t.kg.toFixed(1)+' kg'));
+  box.appendChild(pill('입력 R/T', t.rt.toFixed(3)));
+  // 선택 포트에 따른 최소 과금 CBM 적용 표시 (ICN=2, PUS=1)
+  let applied = '-';
+  if(selectedPort==='ICN' || selectedPort==='PUS'){
+    const min = (RATES.ports[selectedPort] && RATES.ports[selectedPort].minCBM != null ? RATES.ports[selectedPort].minCBM : ((RATES.common && RATES.common.minCBM) || 0));
+    applied = Math.max(t.rt, min).toFixed(3);
+  }
+  box.appendChild(pill('적용 과금 CBM', applied));
+}
+
+function gatherTotals(){
+  let pcs=0, cbm=0, kg=0;
+  if(mode==='cbm'){
+    cbm = parseFloat(document.getElementById('cbm').value||0);
+    kg  = parseFloat(document.getElementById('weight').value||0);
+    pcs = parseInt(document.getElementById('pcs').value||0);
+  }else{
+    const dimRows = document.getElementById('dimRows');
+    for(const r of Array.from(dimRows.children)){
+      const [L,W,H,KG,PCS] = r.querySelectorAll('input');
+      const Lm=parseFloat(L.value||0)/100, Wm=parseFloat(W.value||0)/100, Hm=parseFloat(H.value||0)/100;
+      const pcsN=parseInt(PCS.value||0), kgPer=parseFloat(KG.value||0);
+      cbm += (Lm*Wm*Hm) * pcsN; // m³
+      kg  += kgPer * pcsN;
+      pcs += pcsN;
+    }
+  }
+  const rt = Math.max(cbm, kg/1000); // W/M
+  const chargeable = rt; // 포트별 minCBM은 calcForPort에서 적용
+  return {pcs, cbm, kg, rt, chargeable};
+}
+
+// ======================== 요율 배열(부산) → RATES ========================
+// ❗️중요: RATES에서 참조하기 전에 먼저 초기화한다.
+const __PUS_AD_BASE__ = [4.9,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7];
+const __PUS_AD_DAILY__ = [0,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6];
+const __PUS_WT_BASE__ = [8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000];
+const __PUS_WT_DAILY__ = [0,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000];
+// === ICN(인천) 요율: PDF 기준 상수 적용 ===
+const __ICN_AD_BASE__   = Array(61).fill(1.68);   // 종가 기본요율(‰)
+const __ICN_AD_DAILY__  = Array(61).fill(0.27);   // 종가 일할증(‰/day)
+const __ICN_WT_BASE__   = Array(61).fill(1610);   // 종량 기본요율(원/CBM·day)
+const __ICN_WT_DAILY__  = Array(61).fill(240);    // 종량 일할증(원/CBM·추가일)
+
+const RATES = {
+  common: {
+    vatPct: 10,
+    minCBM: 2,
+    minStorageSubtotal: 50000,
+    shipperCodeFeeFlat: 2000,
+    storageBreakdownPct: { base: 60, daily: 25, weight: 10, inout: 5 },
+    labels: {
+      storage: { title: '보관료', base: '일일창고료', daily: '일일할증료', weight: '중량료', inout: '입·반입할증료', subtotal: '보관료 소계', minNote: '보관료 최저 요금 : 50,000원' },
+      work: { title: '작업료', subtotal: '작업료 소계' },
+      vat: '부가세', shipperCode: '화주번호료', grandTotal: '총 합계'
+    },
+    managementFeePctOfCIF: 0
+  },
+  ports: {
+    ICN: {
+      name: '인천', minCBM: 2,
+      mode: 'table', // 'table' = 엑셀 요율표 방식
+      table: {
+        adValorem: { scale: 1.0 },
+        weight: { scaleBase: 1.0, scaleDaily: 1.0 },
+        basePermilleByDay: __ICN_AD_BASE__,
+        dailyPermilleByDay: __ICN_AD_DAILY__,
+        basePerCbmPerDayByDay: __ICN_WT_BASE__,
+        dailyPerCbmPerDayByDay: __ICN_WT_DAILY__
+      },
+      workItems: [ { label: '입고하차료', amount: 8800 }, { label: '출고상차료', amount: 8800 }, { label: '인출료', amount: 3230 } ]
+    },
+    PUS: {
+      name: '부산', minCBM: 1, mode: 'table',
+      table: {
+        adValorem: { scale: 1.0 }, weight: { scaleBase: 1.0, scaleDaily: 1.0 },
+        basePermilleByDay: __PUS_AD_BASE__,
+        dailyPermilleByDay: __PUS_AD_DAILY__,
+        basePerCbmPerDayByDay: __PUS_WT_BASE__,
+        dailyPerCbmPerDayByDay: __PUS_WT_DAILY__
+      },
+      workItems: [ { label: '출고료 / 상차료', amount: 12000 }, { label: '중량할증료', amount: 6600 }, { label: 'EDI 전송료', amount: 10000 }, { label: '선별할증료', amount: 6600 } ]
+    }
+  }
+};
+
+// ======================== 계산 로직 & 출력 ========================
+function calcForPort(portKey, totals, days, cif){
+  const cfg = RATES.ports[portKey];
+  const c = RATES.common;
+  const minCBM = cfg.minCBM ?? c.minCBM ?? 0;
+  const billCbm = Math.max(totals.chargeable, minCBM);
+
+  let storageSubtotal = 0, storageBreakdown = [];
+  if(cfg.mode==='table'){
+    const tb = cfg.table;
+    if((tb.basePermilleByDay||[]).length===0){
+      // 인천은 부산 배열을 공유 (현재는 ICN 배열을 명시 적용하므로 통상 진입하지 않음)
+      tb.basePermilleByDay = RATES.ports.PUS.table.basePermilleByDay;
+      tb.dailyPermilleByDay = RATES.ports.PUS.table.dailyPermilleByDay;
+      tb.basePerCbmPerDayByDay = RATES.ports.PUS.table.basePerCbmPerDayByDay;
+      tb.dailyPerCbmPerDayByDay = RATES.ports.PUS.table.dailyPerCbmPerDayByDay;
+    }
+    const d = Math.min(days, tb.basePermilleByDay.length-1);
+    const ad_rate_permille = (tb.basePermilleByDay[d]||0) + (tb.dailyPermilleByDay[d]||0)*Math.max(days-1,0);
+    const ad_amount = Math.max(0, Math.round((cif * ad_rate_permille * ((tb.adValorem && tb.adValorem.scale) || 1))/1000));
+
+    const wt_base = tb.basePerCbmPerDayByDay[d]||0;
+    const wt_daily = tb.dailyPerCbmPerDayByDay[d]||0;
+    const wt_amount = Math.max(0, Math.round(((wt_base*days)+(wt_daily*Math.max(days-1,0))) * billCbm * ((tb.weight && tb.weight.scaleBase) || 1)));
+
+    storageSubtotal = Math.max(ad_amount + wt_amount, c.minStorageSubtotal||0);
+    const sp=c.storageBreakdownPct;
+    storageBreakdown = [
+      {label:c.labels.storage.base,   amount:storageSubtotal*(sp.base||0)/100},
+      {label:c.labels.storage.daily,  amount:storageSubtotal*(sp.daily||0)/100},
+      {label:c.labels.storage.weight, amount:storageSubtotal*(sp.weight||0)/100},
+      {label:c.labels.storage.inout,  amount:storageSubtotal*(sp.inout||0)/100}
+    ];
+  }
+
+  const workItems=(cfg.workItems||[]).map(it=>({label:it.label,amount:it.amount||0}));
+  const workSubtotal = workItems.reduce((s,i)=>s+i.amount,0);
+
+  const mgmt=(c.managementFeePctOfCIF||0)>0?cif*(c.managementFeePctOfCIF/100):0;
+  const taxable = storageSubtotal + workSubtotal + mgmt;
+  const vat = Math.round(taxable * (c.vatPct/100));
+  const shipperFee = c.shipperCodeFeeFlat||0;
+  const total = Math.round(storageSubtotal + workSubtotal + mgmt + vat + shipperFee);
+
+  return { name:cfg.name, debug:{ billCbm: billCbm }, table:{
+    storage:{ title:c.labels.storage.title, rows:storageBreakdown, subtotalLabel:c.labels.storage.subtotal, subtotal:Math.round(storageSubtotal), minNote:c.labels.storage.minNote },
+    work:{ title:c.labels.work.title, rows:workItems, subtotalLabel:c.labels.work.subtotal, subtotal:Math.round(workSubtotal) },
+    extras:{ vatLabel:c.labels.vat+' '+c.vatPct+'%', vat:Math.round(vat), shipperLabel:c.labels.shipperCode, shipper:Math.round(shipperFee), grandLabel:c.labels.grandTotal, grand:Math.round(total) }
+  }};
+}
+
+function renderPortTable(res){
+  const div=document.createElement('div'); div.className='card';
+  function section(title){ return `<tr><td colspan=2 style="text-align:left;font-weight:800;color:#0f172a;background:#f8fafc">${title}</td></tr>`; }
+  function row(label,val){ return `<tr><td>${label}</td><td>${fmtKRW(Math.round(val))}</td></tr>`; }
+  function subtotal(label,val){ return `<tr><td style="font-weight:700">${label}</td><td style="font-weight:700">${fmtKRW(Math.round(val))}</td></tr>`; }
+  const t=res.table;
+  const storageRows=t.storage.rows.map(r=>row(r.label,r.amount)).join('')+subtotal(t.storage.subtotalLabel,t.storage.subtotal);
+  const workRows=t.work.rows.map(r=>row(r.label,r.amount)).join('')+subtotal(t.work.subtotalLabel,t.work.subtotal);
+  div.innerHTML=`
+    <h3 style="margin:0 0 8px 0">${res.name}</h3>
+    <table>
+      <thead><tr><th>항목</th><th>금액</th></tr></thead>
+      <tbody>
+        ${section(t.storage.title)}
+        ${storageRows}
+        ${section(t.work.title)}
+        ${workRows}
+        ${row(t.extras.vatLabel,t.extras.vat)}
+        ${row(t.extras.shipperLabel,t.extras.shipper)}
+      </tbody>
+      <tfoot>
+        <tr><td>${t.extras.grandLabel}</td><td>${fmtKRW(t.extras.grand)}</td></tr>
+      </tfoot>
+    </table>
+    <div class="subtle" style="margin-top:6px">${t.storage.minNote}</div>`;
+  return div;
+}
+
+function renderResults(){
+  if(!lastInputs) return;
+  const {totals, days, cif} = lastInputs;
+  const portWrap=document.getElementById('portResults'); portWrap.innerHTML='';
+  const view=document.getElementById('viewModeLabel');
+  const nameMap={ALL:'전체 비교',ICN:'인천항',PUS:'부산항'}; if(view) view.textContent='보기: '+(nameMap[selectedPort]||selectedPort);
+  if(selectedPort==='ALL'){
+    portWrap.classList.add('two');
+    portWrap.appendChild(renderPortTable(calcForPort('ICN',totals,days,cif)));
+    portWrap.appendChild(renderPortTable(calcForPort('PUS',totals,days,cif)));
+  }else{
+    portWrap.classList.remove('two');
+    portWrap.appendChild(renderPortTable(calcForPort(selectedPort,totals,days,cif)));
+  }
+  document.getElementById('resultSec').style.display='block';
+}
+
+// ======================== 버튼 액션 ========================
+function onCalcClick(){
+  const days=parseInt(document.getElementById('days').value||0);
+  const cif = getCifKRW();
+  const totals=gatherTotals();
+  updateTotalsView(totals);
+  if(!Number.isFinite(days)||days<0){ alert('보관 일수를 확인해주세요.'); return; }
+  if(totals.cbm===0 && totals.kg===0){ alert('CBM 또는 사이즈를 입력하세요.'); return; }
+  lastInputs={totals,days,cif};
+  renderResults();
+}
+
+function onResetClick(){
+  document.getElementById('days').value='';
+  document.getElementById('cif').value='';
+  document.getElementById('cbm').value='';
+  document.getElementById('weight').value='';
+  document.getElementById('pcs').value='';
+  const dimRows=document.getElementById('dimRows'); if(dimRows){ dimRows.innerHTML=''; }
+  addDimRow();
+  document.getElementById('resultSec').style.display='none';
+  updateTotalsView({pcs:0,cbm:0,kg:0,rt:0,chargeable:0});
+}
+
+// ======================== CIF 실시간 포맷팅 ========================
+function getCifKRW(){
+  var el=document.getElementById('cif');
+  if(!el) return 0;
+  var raw=String(el.value||'');
+  var n=parseInt(raw.replace(/[^\d]/g,''),10);
+  return isNaN(n)?0:n;
+}
+function bindCifFormatter(){
+  var el=document.getElementById('cif');
+  if(!el || el.__kb_cif_bound) return; el.__kb_cif_bound=true;
+  var composing=false;
+  function fmtDigits(d){ if(!d) return ''; var n=parseInt(d,10); if(isNaN(n)) return ''; return NF.format(n); }
+  function setCaretByDigits(el, digitsLeft){
+    var v=el.value, seen=0, pos=0;
+    for(var i=0;i<v.length;i++){ if(/[0-9]/.test(v[i])){ seen++; } pos=i+1; if(seen>=digitsLeft){ break; } }
+    if(digitsLeft===0) pos=0; try{ el.setSelectionRange(pos,pos); }catch(e){}
+  }
+  var doFormat = throttle(function(){
+    var raw=el.value; var caret=el.selectionStart||0; var digitsLeft=0; for(var i=0;i<caret;i++){ if(/[0-9]/.test(raw[i])) digitsLeft++; }
+    var only=raw.replace(/[^0-9]/g,''); el.value=fmtDigits(only); setCaretByDigits(el, digitsLeft);
+  }, 16);
+  el.addEventListener('compositionstart', function(){ composing=true; });
+  el.addEventListener('compositionend', function(){ composing=false; doFormat(); });
+  el.addEventListener('input', function(){ if(!composing) doFormat(); });
+  el.addEventListener('blur', function(){ if(!composing) doFormat(); });
+}
+
+// 실시간 합계(요약) 갱신: 모바일 성능을 위해 throttle 적용
+function liveTotals(){ updateTotalsView(gatherTotals()); }
+function bindLiveTotals(){
+  var h = throttle(liveTotals, 50);
+  document.addEventListener('input', function(e){
+    var t = e.target;
+    if(t.matches('#cbm,#weight,#pcs') || t.closest('#dimRows')){ h(); }
+  });
+}
+
+// ======================== 개발용 테스트 ========================
+// 1) 스모크: 입력→계산→포트/모드 전환
+window.KB_testSmoke = function(){
+  try{
+    document.getElementById('days').value=5;
+    document.getElementById('cif').value=8362000;
+    document.getElementById('cbm').value=2;
+    document.getElementById('weight').value=0;
+    document.getElementById('pcs').value=1;
+    document.getElementById('calc').click();
+    document.getElementById('portPUS').click();
+    document.getElementById('portICN').click();
+    document.getElementById('portALL').click();
+    document.getElementById('modeDIMS').click();
+    document.getElementById('modeCBM').click();
+    console.log('[KB Test] smoke OK');
+  }catch(e){ console.error('[KB Test] failed', e); }
+};
+// 2) 최소 과금 규칙: PUS=1, ICN=2
+window.KB_testMinRules = function(){
+  try{
+    var totals = { pcs:1, cbm:0.6, kg:0, rt:0.6, chargeable:0.6 };
+    var d=1, cif=0;
+    var rP = calcForPort('PUS', totals, d, cif);
+    var rI = calcForPort('ICN', totals, d, cif);
+    console.assert(rP.debug && rP.debug.billCbm === 1, '[KB Test] PUS billCbm should be 1, got', rP.debug && rP.debug.billCbm);
+    console.assert(rI.debug && rI.debug.billCbm === 2, '[KB Test] ICN billCbm should be 2, got', rI.debug && rI.debug.billCbm);
+    console.log('[KB Test] min rules OK');
+  }catch(e){ console.error('[KB Test] min rules failed', e); }
+};
+// 3) 사이즈 입력 계산 검증
+window.KB_testDims = function(){
+  try{
+    document.getElementById('modeDIMS').click();
+    var dimRows=document.getElementById('dimRows'); dimRows.innerHTML='';
+    addDimRow({L:100,W:50,H:40,KG:20,PCS:2}); // 0.1*0.5*0.4=0.02 m³ ×2=0.04
+    document.getElementById('days').value=3; document.getElementById('cif').value=0;
+    document.getElementById('calc').click();
+    console.assert(document.getElementById('resultSec').style.display==='block', '[KB Test] dims result not visible');
+    console.log('[KB Test] dims flow OK');
+  }catch(e){ console.error('[KB Test] dims failed', e); }
+};
+// 4) 포트 클릭 동작 검증(추가)
+window.KB_testPortClicks = function(){
+  try{
+    document.getElementById('portPUS').click();
+    console.assert(selectedPort==='PUS', '[KB Test] PUS click failed, got', selectedPort);
+    document.getElementById('portICN').click();
+    console.assert(selectedPort==='ICN', '[KB Test] ICN click failed, got', selectedPort);
+    document.getElementById('portALL').click();
+    console.assert(selectedPort==='ALL', '[KB Test] ALL click failed, got', selectedPort);
+    console.log('[KB Test] port clicks OK');
+  }catch(e){ console.error('[KB Test] port clicks failed', e); }
+};
+// 5) 적용 과금 CBM 배지 검증(신규): ICN=2.000, PUS=1.000
+window.KB_testAppliedCbmPill = function(){
+  try{
+    // ICN 검사
+    document.getElementById('portICN').click();
+    var t1 = { pcs:1, cbm:0.6, kg:0, rt:0.6, chargeable:0.6 };
+    updateTotalsView(t1);
+    var pills1 = Array.from(document.querySelectorAll('#totals .pill')).map(function(el){return el.textContent;});
+    var applied1 = pills1.find(function(x){return x.indexOf('적용 과금 CBM')>-1;}) || '';
+    console.assert(applied1.indexOf('2.000')>-1, '[KB Test] ICN 적용 과금 CBM pill should be 2.000, got', applied1);
+
+    // PUS 검사
+    document.getElementById('portPUS').click();
+    var t2 = { pcs:1, cbm:0.6, kg:0, rt:0.6, chargeable:0.6 };
+    updateTotalsView(t2);
+    var pills2 = Array.from(document.querySelectorAll('#totals .pill')).map(function(el){return el.textContent;});
+    var applied2 = pills2.find(function(x){return x.indexOf('적용 과금 CBM')>-1;}) || '';
+    console.assert(applied2.indexOf('1.000')>-1, '[KB Test] PUS 적용 과금 CBM pill should be 1.000, got', applied2);
+
+    console.log('[KB Test] applied CBM pill OK');
+  }catch(e){ console.error('[KB Test] applied CBM pill failed', e); }
+};
+// 6) CIF 천단위 포맷 & 파싱 검증(신규)
+window.KB_testCifFormat = function(){
+  try{
+    var el=document.getElementById('cif');
+    el.focus();
+    el.value='1234567';
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    el.blur();
+    console.assert(el.value==='1,234,567', '[KB Test] CIF format failed, got', el.value);
+    var val=getCifKRW();
+    console.assert(val===1234567, '[KB Test] CIF parse failed, got', val);
+    console.log('[KB Test] cif format OK');
+  }catch(e){ console.error('[KB Test] cif format failed', e); }
+};
+// 7) CIF 실시간 쉼표 포맷 검증(신규)
+window.KB_testCifLiveFormat = function(){
+  try{
+    var el=document.getElementById('cif');
+    el.value='1234567';
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    console.assert(el.value==='1,234,567', '[KB Test] CIF live format failed, got', el.value);
+    console.log('[KB Test] cif live format OK');
+  }catch(e){ console.error('[KB Test] cif live format failed', e); }
+};
+// 8) (신규) 구문 오류 가드: 주요 함수가 로드되었는지 확인
+window.KB_testSyntaxGuards = function(){
+  try{
+    console.assert(typeof handlePort==='function', 'handlePort missing');
+    console.assert(typeof bindCifFormatter==='function', 'bindCifFormatter missing');
+    console.assert(typeof calcForPort==='function', 'calcForPort missing');
+    console.assert(typeof throttle==='function', 'throttle missing');
+    console.assert(typeof NF!=='undefined', 'NF missing');
+    console.log('[KB Test] syntax guards OK');
+  }catch(e){ console.error('[KB Test] syntax guards failed', e); }
+};
+// 9) (신규) 인천 요율 검증 - 최소 보관료 구간
+window.KB_testICNRatesSmall = function(){
+  try{
+    var totals = { pcs:1, cbm:0.2, kg:0, rt:0.2, chargeable:0.2 }; // billCbm -> 2
+    var d=3, cif=10000000; // 1.68 + 0.27*(3-1)=2.22‰ -> 22,200원
+    var r = calcForPort('ICN', totals, d, cif);
+    console.assert(r.table.storage.subtotal === 50000, '[KB Test] ICN small subtotal should hit minimum(50,000), got', r.table.storage.subtotal);
+    console.log('[KB Test] ICN small (min) OK');
+  }catch(e){ console.error('[KB Test] ICN small failed', e); }
+};
+// 10) (신규) 인천 요율 검증 - 산식 케이스
+window.KB_testICNRatesLarge = function(){
+  try{
+    var totals = { pcs:1, cbm:3.0, kg:0, rt:3.0, chargeable:3.0 }; // billCbm=3
+    var d=2, cif=80000000; // ad: (1.68 + 0.27*(1))‰ * 80,000,000 = 156,000
+    // wt: ((1610*2) + (240*1)) * 3 = (3,220 + 240) * 3 = 10,380
+    var expected = 156000 + 10380; // 166,380
+    var r = calcForPort('ICN', totals, d, cif);
+    console.assert(r.table.storage.subtotal === expected, '[KB Test] ICN large subtotal mismatch, expected', expected, 'got', r.table.storage.subtotal);
+    console.log('[KB Test] ICN large (formula) OK');
+  }catch(e){ console.error('[KB Test] ICN large failed', e); }
+};
+</script>
+</body>
+</html>
